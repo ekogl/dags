@@ -24,7 +24,7 @@ default_args = {
 TOTAL_ITEMS = 15000
 FREQ_TOTAL_PLOTS = 1000
 
-MINIO_ENDPOINT = "minio.minio.svc.cluster.local:9000"
+MINIO_ENDPOINT = "minio.stefan-dev.svc.cluster.local:9000"
 MINIO_ACCESS_KEY = "minioadmin"
 MINIO_SECRET_KEY = "minioadmin"
 CHROM_NR = "22"
@@ -32,7 +32,7 @@ MINIO_BUCKET = "genome-data"
 KEY_INPUT_INDIVIDUAL = f"ALL.chr22.{TOTAL_ITEMS}.vcf.gz"
 KEY_INPUT_SIFTING = "ALL.chr22.phase3_shapeit2_mvncall_integrated_v5.20130502.sites.annotation.vcf.gz"
 
-NAMESPACE = "default"
+NAMESPACE = "kogler-dev"
 
 minio_env_vars = [
     k8s.V1EnvVar(name="MINIO_ENDPOINT", value=MINIO_ENDPOINT),

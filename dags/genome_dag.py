@@ -95,6 +95,12 @@ with DAG(
     # preparation tasks
     @task()
     def prepare_individual_tasks():
+        
+        import os
+        os.environ["ARBO_DB_HOST"] = "arbo-db-service"
+        os.environ["ARBO_DB_PORT"] = "5432"
+        os.environ["ARBO_DB_NAME"] = "arbo_data"
+        
         logger.info("Preparing individual tasks with ArboOptimizer")
         optimizer = ArboOptimizer()
         logger.info("Fetching cluster load for optimization")

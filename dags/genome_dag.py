@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from airflow.utils.trigger_rule import TriggerRule
 
 from arbo_lib.airflow.optimizer import ArboOptimizer
+from arbo_lib.config import Config
 from arbo_lib.utils.logger import get_logger
 
 logger = get_logger("arbo.genome_dag")
@@ -23,6 +24,15 @@ default_args = {
     "retries": 1,
     "retry_delay": timedelta(minutes=5),
 }
+
+def patch_arbo_settings():
+    Config.DB_HOST = os.getenv("ARBO_DB_HOST", "arbo-db-service")
+    # CRITICAL: Convert string port from env to integer
+    Config.DB_PORT = int(os.getenv("ARBO_DB_PORT", 5432))
+    Config.DB_NAME = os.getenv("ARBO_DB_NAME", "arbo_data")
+    Config.DB_USER = os.getenv("ARBO_DB_USER", "arbo_user")
+    Config.DB_PASS = os.getenv("ARBO_DB_PASS", "arbo_pass")
+    logger.info(f"Library Patched: Targetting {Config.DB_HOST}:{Config.DB_PORT}")
 
 TOTAL_ITEMS = 80000
 FREQ_TOTAL_PLOTS = 1000
@@ -95,16 +105,9 @@ with DAG(
     # preparation tasks
     @task()
     def prepare_individual_tasks():
-        
-        from arbo_lib.db.store import Config # Adjust this import path to where Config is defined
-        Config.DB_HOST = "arbo-db-service"
-        Config.DB_PORT = 5432
-        Config.DB_NAME = "arbo_data"
-        Config.DB_USER = "arbo_user"
-        Config.DB_PASS = "arbo_pass"
-        
+        patch_arbo_settings()
         logger.info(f"Connecting to DB at {Config.DB_HOST}:{Config.DB_PORT}")
-        # optimizer = ArboOptimizer()
+        optimizer = ArboOptimizer()
         logger.info("Fetching cluster load for optimization")
         cluster_load = 0.5
 
@@ -236,12 +239,7 @@ with DAG(
     # TASK GROUP DEFINITIONS
     # =================================
     @task_group(group_id="individual_tasks")
-    def run_individual_tasks():
-        import os
-        os.environ["ARBO_DB_HOST"] = "arbo-db-service"
-        os.environ["ARBO_DB_PORT"] = "5432"
-        os.environ["ARBO_DB_NAME"] = "arbo_data"
-        
+    def run_individual_tasks():        
         logger.info("Running individual tasks group")
         ind_plan = prepare_individual_tasks()
 

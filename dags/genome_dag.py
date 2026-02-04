@@ -110,13 +110,13 @@ with DAG(
 
         logger.info(f"K8s Internal Call: Targetting {MINIO_ENDPOINT}")
 
-        input_quantity = optimizer.get_filesize(
-            endpoint_url=f"http://{MINIO_ENDPOINT}",
-            access_key=MINIO_ACCESS_KEY,
-            secret_key=MINIO_SECRET_KEY,
-            bucket_name=MINIO_BUCKET,
-            file_key=f"input/{KEY_INPUT_INDIVIDUAL}"
-        )
+        # input_quantity = optimizer.get_filesize(
+        #     endpoint_url=f"http://{MINIO_ENDPOINT}",
+        #     access_key=MINIO_ACCESS_KEY,
+        #     secret_key=MINIO_SECRET_KEY,
+        #     bucket_name=MINIO_BUCKET,
+        #     file_key=f"input/{KEY_INPUT_INDIVIDUAL}"
+        # )
 
         if not input_quantity:
             logger.warning("Could not reach MinIO or file not found. Falling back to TOTAL_ITEMS.")

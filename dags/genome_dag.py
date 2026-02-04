@@ -24,7 +24,7 @@ default_args = {
     "retry_delay": timedelta(minutes=5),
 }
 
-TOTAL_ITEMS = 15000
+TOTAL_ITEMS = 80000
 FREQ_TOTAL_PLOTS = 1000
 
 # K8s Internal FQDN: <service>.<namespace>.svc.cluster.local

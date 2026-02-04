@@ -95,7 +95,9 @@ with DAG(
     # preparation tasks
     @task()
     def prepare_individual_tasks():
+        logger.info("Preparing individual tasks with ArboOptimizer")
         optimizer = ArboOptimizer()
+        logger.info("Fetching cluster load for optimization")
         cluster_load = 0.5
 
         logger.info(f"K8s Internal Call: Targetting {MINIO_ENDPOINT}")

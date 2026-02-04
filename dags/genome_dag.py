@@ -96,7 +96,7 @@ with DAG(
     @task()
     def prepare_individual_tasks():
         optimizer = ArboOptimizer()
-        cluster_load = optimizer.get_virtual_memory()
+        cluster_load = 0.5
 
         logger.info(f"K8s Internal Call: Targetting {MINIO_ENDPOINT}")
 

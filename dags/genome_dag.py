@@ -13,8 +13,6 @@ from arbo_lib.utils.logger import get_logger
 
 logger = get_logger("arbo.genome_dag")
 
-# Ensure this connection exists in Airflow UI (Admin -> Connections)
-K8S_CONN_ID = "kubernetes_default"
 
 default_args = {
     "owner": "user",

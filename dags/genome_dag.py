@@ -104,7 +104,7 @@ with DAG(
         Config.DB_PASS = "arbo_pass"
         
         logger.info(f"Connecting to DB at {Config.DB_HOST}:{Config.DB_PORT}")
-        optimizer = ArboOptimizer()
+        # optimizer = ArboOptimizer()
         logger.info("Fetching cluster load for optimization")
         cluster_load = 0.5
 

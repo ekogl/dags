@@ -229,6 +229,11 @@ with DAG(
     # =================================
     @task_group(group_id="individual_tasks")
     def run_individual_tasks():
+        import os
+        os.environ["ARBO_DB_HOST"] = "arbo-db-service"
+        os.environ["ARBO_DB_PORT"] = "5432"
+        os.environ["ARBO_DB_NAME"] = "arbo_data"
+        
         logger.info("Running individual tasks group")
         ind_plan = prepare_individual_tasks()
 

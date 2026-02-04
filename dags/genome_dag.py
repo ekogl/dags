@@ -229,6 +229,7 @@ with DAG(
     # =================================
     @task_group(group_id="individual_tasks")
     def run_individual_tasks():
+        logger.info("Running individual tasks group")
         ind_plan = prepare_individual_tasks()
 
         workers = KubernetesPodOperator.partial(

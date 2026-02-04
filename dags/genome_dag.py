@@ -103,7 +103,7 @@ with DAG(
         logger.info(f"Local Simulation: Cluster Load set to {cluster_load}")
 
         input_quantity = optimizer.get_filesize(
-            endpoint_url="http://localhost:9000",
+            endpoint_url=f"http://{MINIO_ENDPOINT}",
             access_key=MINIO_ACCESS_KEY,
             secret_key=MINIO_SECRET_KEY,
             bucket_name=MINIO_BUCKET,
@@ -172,7 +172,7 @@ with DAG(
         cluster_load = optimizer.get_virtual_memory()
 
         pop_input_size = optimizer.get_filesize(
-            endpoint_url="http://localhost:9000",
+            endpoint_url=f"http://{MINIO_ENDPOINT}",
             access_key=MINIO_ACCESS_KEY,
             secret_key=MINIO_SECRET_KEY,
             bucket_name=MINIO_BUCKET,

@@ -1,4 +1,5 @@
 import time
+import os
 from airflow import DAG
 from airflow.providers.cncf.kubernetes.operators.pod import KubernetesPodOperator
 from airflow.decorators import task, task_group

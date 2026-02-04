@@ -96,12 +96,14 @@ with DAG(
     @task()
     def prepare_individual_tasks():
         
-        import os
-        os.environ["ARBO_DB_HOST"] = "arbo-db-service"
-        os.environ["ARBO_DB_PORT"] = "5432"
-        os.environ["ARBO_DB_NAME"] = "arbo_data"
+        from arbo_lib.db.store import Config # Adjust this import path to where Config is defined
+        Config.DB_HOST = "arbo-db-service"
+        Config.DB_PORT = 5432
+        Config.DB_NAME = "arbo_data"
+        Config.DB_USER = "arbo_user"
+        Config.DB_PASS = "arbo_pass"
         
-        logger.info("Preparing individual tasks with ArboOptimizer")
+        logger.info(f"Connecting to DB at {Config.DB_HOST}:{Config.DB_PORT}")
         optimizer = ArboOptimizer()
         logger.info("Fetching cluster load for optimization")
         cluster_load = 0.5

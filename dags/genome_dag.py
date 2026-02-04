@@ -26,15 +26,6 @@ default_args = {
     "retry_delay": timedelta(minutes=5),
 }
 
-def patch_arbo_settings():
-    Config.DB_HOST = os.getenv("ARBO_DB_HOST", "arbo-db-service")
-    # CRITICAL: Convert string port from env to integer
-    Config.DB_PORT = int(os.getenv("ARBO_DB_PORT", 5432))
-    Config.DB_NAME = os.getenv("ARBO_DB_NAME", "arbo_data")
-    Config.DB_USER = os.getenv("ARBO_DB_USER", "arbo_user")
-    Config.DB_PASS = os.getenv("ARBO_DB_PASS", "arbo_pass")
-    logger.info(f"Library Patched: Targetting {Config.DB_HOST}:{Config.DB_PORT}")
-
 TOTAL_ITEMS = 80000
 FREQ_TOTAL_PLOTS = 1000
 
@@ -106,8 +97,12 @@ with DAG(
     # preparation tasks
     @task()
     def prepare_individual_tasks():
-        patch_arbo_settings()
         logger.info(f"Connecting to DB at {Config.DB_HOST}:{Config.DB_PORT}")
+        Config.DB_HOST = "arbo-db-service.kogler-dev.svc.cluster.local"
+        Config.DB_PORT = 5432  # NO QUOTES - Must be an actual integer
+        Config.DB_NAME = "arbo_data"
+        Config.DB_USER = "arbo_user"
+        Config.DB_PASS = "arbo_pass"
         optimizer = ArboOptimizer()
         logger.info("Fetching cluster load for optimization")
         cluster_load = 0.5

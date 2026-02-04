@@ -54,6 +54,6 @@ with DAG(
 
     create_schema = SQLExecuteQueryOperator(
         task_id="create_schema",
-        conn_id="postgres_default",
+        conn_id="arbo_db",
         sql=CREATE_TABLES_SQL
     )

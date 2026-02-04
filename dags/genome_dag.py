@@ -121,6 +121,8 @@ with DAG(
         #     bucket_name=MINIO_BUCKET,
         #     file_key=f"input/{KEY_INPUT_INDIVIDUAL}"
         # )
+        
+        input_quantity = 80000
 
         if not input_quantity:
             logger.warning("Could not reach MinIO or file not found. Falling back to TOTAL_ITEMS.")

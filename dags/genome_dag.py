@@ -255,6 +255,7 @@ with DAG(
             cmds=["python3", "individual.py"],
             env_vars=minio_env_vars,
             is_delete_operator_pod=True,
+            node_selector={"kubernetes.io/hostname": "node1"},
         ).expand(
             arguments=extract_pod_args(ind_plan)
         )
@@ -273,6 +274,7 @@ with DAG(
             ],
             env_vars=minio_env_vars,
             is_delete_operator_pod=True,
+            node_selector={"kubernetes.io/hostname": "node1"},
         )
 
         feedback = report_feedback(ind_plan, "genome_individual")
@@ -290,6 +292,7 @@ with DAG(
             cmds=["python3", "frequency_par2.py"],
             env_vars=minio_env_vars,
             is_delete_operator_pod=True,
+            node_selector={"kubernetes.io/hostname": "node1"},
         ).expand(
             arguments=get_w_args(plan_data)
         )
@@ -303,6 +306,7 @@ with DAG(
             cmds=["python3", "frequency_par2.py"],
             env_vars=minio_env_vars,
             is_delete_operator_pod=True,
+            node_selector={"kubernetes.io/hostname": "node1"},
         ).expand(
             arguments=get_m_args(plan_data)
         )
@@ -332,6 +336,7 @@ with DAG(
         is_delete_operator_pod=True,
         image_pull_policy="IfNotPresent",
         execution_timeout=timedelta(hours=1),
+        node_selector={"kubernetes.io/hostname": "node1"},
     )
 
     # mutations_data = mutations_overlap_data(populations)
@@ -346,6 +351,7 @@ with DAG(
     #     get_logs=True,
     #     is_delete_operator_pod=True,
     #     image_pull_policy="IfNotPresent",
+    #     node_selector = {"kubernetes.io/hostname": "node1"},
     # ).expand(
     #     arguments=mutations_data
     # )

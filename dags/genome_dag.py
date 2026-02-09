@@ -57,7 +57,8 @@ with DAG(
         max_active_tasks=20,
 ) as dag:
 
-    populations = ["EUR", "AFR", "EAS", "ALL", "GBR", "SAS", "AMR"]
+    # populations = ["EUR", "AFR", "EAS", "ALL", "GBR", "SAS", "AMR"]
+    populations = ["AFR", "ALL"]
 
     # =================================
     # HELPER TASKS

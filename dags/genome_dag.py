@@ -97,17 +97,17 @@ with DAG(
     # preparation tasks
     @task()
     def prepare_individual_tasks():
-        import os
-        # 1. SET ENV VARS BEFORE ANY LIBRARY IMPORTS
-        os.environ["ARBO_DB_HOST"] = "arbo-db-service"
-        os.environ["ARBO_DB_PORT"] = "5432"
-        os.environ["ARBO_DB_NAME"] = "arbo_data"
-        
-        # 2. NOW IMPORT THE CONFIG AND OVERRIDE MANUALLY
-        from arbo_lib.db.store import Config
-        Config.DB_HOST = "arbo-db-service"
-        Config.DB_PORT = 5432 # Integer, not string
-        Config.DB_NAME = "arbo_data"
+        # import os
+        # # 1. SET ENV VARS BEFORE ANY LIBRARY IMPORTS
+        # os.environ["ARBO_DB_HOST"] = "arbo-db-service"
+        # os.environ["ARBO_DB_PORT"] = "5432"
+        # os.environ["ARBO_DB_NAME"] = "arbo_data"
+        #
+        # # 2. NOW IMPORT THE CONFIG AND OVERRIDE MANUALLY
+        # from arbo_lib.db.store import Config
+        # Config.DB_HOST = "arbo-db-service"
+        # Config.DB_PORT = 5432 # Integer, not string
+        # Config.DB_NAME = "arbo_data"
         optimizer = ArboOptimizer()
         logger.info("Fetching cluster load for optimization")
         cluster_load = 0.5

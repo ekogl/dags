@@ -111,7 +111,7 @@ with DAG(
         # Config.DB_NAME = "arbo_data"
         optimizer = ArboOptimizer()
         logger.info("Fetching cluster load for optimization")
-        cluster_load = 0.5
+        cluster_load = optimizer.get_cluster_load(namespace="kogler-dev")
 
         logger.info(f"K8s Internal Call: Targetting {MINIO_ENDPOINT}")
 
@@ -173,7 +173,7 @@ with DAG(
     @task
     def prepare_frequency_tasks(pop: str):
         optimizer = ArboOptimizer()
-        cluster_load = optimizer.get_virtual_memory()
+        cluster_load = optimizer.get_cluster_load(namespace="kogler-dev")
 
         pop_input_size = optimizer.get_filesize(
             endpoint_url=f"http://{MINIO_ENDPOINT}",

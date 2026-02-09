@@ -333,24 +333,24 @@ with DAG(
         execution_timeout=timedelta(hours=1),
     )
 
-    mutations_data = mutations_overlap_data(populations)
-    mutations_tasks = KubernetesPodOperator.partial(
-        task_id="mutations_overlap",
-        kubernetes_conn_id=K8S_CONN_ID,
-        name="mutations-overlap",
-        namespace=NAMESPACE,
-        image="kogsi/genome_dag:mutations-overlap",
-        cmds=["python3", "mutations-overlap.py"],
-        env_vars=minio_env_vars,
-        get_logs=True,
-        is_delete_operator_pod=True,
-        image_pull_policy="IfNotPresent",
-    ).expand(
-        arguments=mutations_data
-    )
+    # mutations_data = mutations_overlap_data(populations)
+    # mutations_tasks = KubernetesPodOperator.partial(
+    #     task_id="mutations_overlap",
+    #     kubernetes_conn_id=K8S_CONN_ID,
+    #     name="mutations-overlap",
+    #     namespace=NAMESPACE,
+    #     image="kogsi/genome_dag:mutations-overlap",
+    #     cmds=["python3", "mutations-overlap.py"],
+    #     env_vars=minio_env_vars,
+    #     get_logs=True,
+    #     is_delete_operator_pod=True,
+    #     image_pull_policy="IfNotPresent",
+    # ).expand(
+    #     arguments=mutations_data
+    # )
 
-    individual_group >> mutations_tasks
-    sifting_task >> mutations_tasks
+    # individual_group >> mutations_tasks
+    # sifting_task >> mutations_tasks
 
     for pop in populations:
         with TaskGroup(group_id=f"freq_{pop}") as frequency_group:

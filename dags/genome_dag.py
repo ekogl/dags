@@ -108,7 +108,7 @@ with DAG(
         logger.info(f"Local Simulation: Cluster Load set to {cluster_load}")
 
         input_quantity = optimizer.get_filesize(
-            endpoint_url=MINIO_ENDPOINT,
+            endpoint_url=f"http://{MINIO_ENDPOINT}",
             access_key=MINIO_ACCESS_KEY,
             secret_key=MINIO_SECRET_KEY,
             bucket_name=MINIO_BUCKET,

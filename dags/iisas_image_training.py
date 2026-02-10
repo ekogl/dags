@@ -282,17 +282,28 @@ with DAG(
     )
 
     @task(trigger_rule=TriggerRule.ALL_SUCCESS)
-    def report_feedback(metadata: dict):
+    def report_feedback(metadata: dict, **context):
+        dag_run = context.get("dag_run")
+        tis = dag_run.get_task_instances()
+        
+        group_prefix = "preprocessing_pipeline"
+        group_tis = [ti for ti in tis if ti.task_id.startswith(group_prefix)]
+        
+        start_times = [ti.start_date for ti in group_tis if ti.start_date]
+        end_times = [ti.end_date for ti in group_tis if ti.end_date]
+        
+        if start_times and end_times:
+            actual_duration = (max(end_times) - min(start_times)).total_seconds()
+            logger.info(f"Calculated TaskGroup duration: {actual_duration}s")
+        else:
+            actual_duration = time.time() - metadata["start_time"]
+            logger.warning("Could not calculate duration, using timestamps.")
+            
         optimizer = ArboOptimizer()
-
-        # TODO: get execution time form prometheus
-
-        end_time = time.time()
-        duration = end_time - metadata["start_time"]
 
         optimizer.report_success(
             task_name="iisas_image_training",
-            total_duration=duration,
+            total_duration=actual_duration,
             s=metadata["s"],
             gamma=metadata["gamma"],
             cluster_load=metadata["cluster_load"],

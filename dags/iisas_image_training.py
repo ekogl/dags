@@ -51,10 +51,10 @@ with DAG(
         optimizer = ArboOptimizer()
 
         # TODO: change later
-        cluster_load = optimizer.get_cluster_load(namespace="kogler-dev")
+        cluster_load = optimizer.get_virtual_memory()
 
         input_quantity = optimizer.get_directory_size(
-            endpoint_url=f"http://{MINIO_ENDPOINT}",
+            endpoint_url="http://localhost:9000",
             access_key=MINIO_ACCESS_KEY,
             secret_key=MINIO_SECRET_KEY,
             bucket_name=MINIO_BUCKET,
@@ -178,6 +178,7 @@ with DAG(
             get_logs=True,
             is_delete_operator_pod=True,
             image_pull_policy="IfNotPresent",
+            node_selector={"kubernetes.io/hostname": "node1"},
         )
 
         crop = KubernetesPodOperator(
@@ -190,6 +191,7 @@ with DAG(
             get_logs=True,
             is_delete_operator_pod=True,
             image_pull_policy="IfNotPresent",
+            node_selector={"kubernetes.io/hostname": "node1"},
         )
 
         enhance_brightness = KubernetesPodOperator(
@@ -202,6 +204,7 @@ with DAG(
             get_logs=True,
             is_delete_operator_pod=True,
             image_pull_policy="IfNotPresent",
+            node_selector={"kubernetes.io/hostname": "node1"},
         )
 
         enhance_contrast = KubernetesPodOperator(
@@ -214,6 +217,7 @@ with DAG(
             get_logs=True,
             is_delete_operator_pod=True,
             image_pull_policy="IfNotPresent",
+            node_selector={"kubernetes.io/hostname": "node1"},
         )
 
         rotate = KubernetesPodOperator(
@@ -226,6 +230,7 @@ with DAG(
             get_logs=True,
             is_delete_operator_pod=True,
             image_pull_policy="IfNotPresent",
+            node_selector={"kubernetes.io/hostname": "node1"},
         )
 
         grayscale = KubernetesPodOperator(
@@ -238,6 +243,7 @@ with DAG(
             get_logs=True,
             is_delete_operator_pod=True,
             image_pull_policy="IfNotPresent",
+            node_selector={"kubernetes.io/hostname": "node1"},
         )
 
         offset >> crop >> enhance_brightness >> enhance_contrast >> rotate >> grayscale
@@ -279,36 +285,33 @@ with DAG(
         get_logs=True,
         is_delete_operator_pod=True,
         image_pull_policy="IfNotPresent",
+        node_selector={"kubernetes.io/hostname": "node1"},
     )
+
 
     @task(trigger_rule=TriggerRule.ALL_SUCCESS)
     def report_feedback(metadata: dict, **context):
-        dag_run = context.get("dag_run")
-        tis = dag_run.get_task_instances()
-        
-        group_prefix = "preprocessing_pipeline"
-        group_tis = [ti for ti in tis if ti.task_id.startswith(group_prefix)]
-        
-        start_times = [ti.start_date for ti in group_tis if ti.start_date]
-        end_times = [ti.end_date for ti in group_tis if ti.end_date]
-        
-        if start_times and end_times:
-            actual_duration = (max(end_times) - min(start_times)).total_seconds()
-            logger.info(f"Calculated TaskGroup duration: {actual_duration}s")
-        else:
-            actual_duration = time.time() - metadata["start_time"]
-            logger.warning("Could not calculate duration, using timestamps.")
-            
         optimizer = ArboOptimizer()
+
+        dag_id = context["dag"].dag_id
+        run_id = context["run_id"]
+
+        local_start = context["dag_run"].start_date.timestamp()
+        fallback_dur = time.time() - local_start
 
         optimizer.report_success(
             task_name="iisas_image_training",
-            total_duration=actual_duration,
             s=metadata["s"],
             gamma=metadata["gamma"],
             cluster_load=metadata["cluster_load"],
             predicted_amdahl=metadata["amdahl_time"],
-            predicted_residual=metadata["pred_residual"]
+            predicted_residual=metadata["pred_residual"],
+            namespace=NAMESPACE,
+            dag_id=dag_id,
+            run_id=run_id,
+            target_id="preprocessing_pipeline",  # The TaskGroup ID
+            fallback_duration=fallback_dur,
+            is_group=True  # Group calculation for parallel steps
         )
 
     pipeline_configs = prepare_pipeline_configs()

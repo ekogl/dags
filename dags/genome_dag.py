@@ -1,5 +1,4 @@
 import time
-import os
 from airflow import DAG
 from airflow.providers.cncf.kubernetes.operators.pod import KubernetesPodOperator
 from airflow.decorators import task, task_group
@@ -10,13 +9,9 @@ from datetime import datetime, timedelta
 from airflow.utils.trigger_rule import TriggerRule
 
 from arbo_lib.airflow.optimizer import ArboOptimizer
-from arbo_lib.config import Config
 from arbo_lib.utils.logger import get_logger
 
 logger = get_logger("arbo.genome_dag")
-
-# Ensure this connection exists in Airflow UI (Admin -> Connections)
-K8S_CONN_ID = "kubernetes_default"
 
 default_args = {
     "owner": "user",
@@ -29,7 +24,6 @@ default_args = {
 TOTAL_ITEMS = 15000
 FREQ_TOTAL_PLOTS = 1000
 
-# K8s Internal FQDN: <service>.<namespace>.svc.cluster.local
 MINIO_ENDPOINT = "minio.stefan-dev.svc.cluster.local:9000"
 MINIO_ACCESS_KEY = "minioadmin"
 MINIO_SECRET_KEY = "minioadmin"
@@ -59,24 +53,31 @@ with DAG(
 
     # populations = ["EUR", "AFR", "EAS", "ALL", "GBR", "SAS", "AMR"]
     populations = ["AFR", "ALL"]
-
     # =================================
     # HELPER TASKS
     # =================================
     @task(trigger_rule=TriggerRule.ALL_SUCCESS)
-    def report_feedback(data: dict, task_name: str):
+    def report_feedback(metadata: dict, task_name: str, target_group_id: str, is_group: bool,  **context):
         optimizer = ArboOptimizer()
-        end_time = time.time()
-        duration = end_time - data["start_time"]
+        dag_id = context["dag"].dag_id
+        run_id = context["run_id"]
+
+        local_start = context["dag_run"].start_date.timestamp()
+        fallback_dur = time.time() - local_start
 
         optimizer.report_success(
             task_name=task_name,
-            total_duration=duration,
-            s=data["s"],
-            gamma=data["gamma"],
-            cluster_load=data["cluster_load"],
-            predicted_amdahl=data["amdahl_time"],
-            predicted_residual=data["pred_residual"]
+            s=metadata["s"],
+            gamma=metadata["gamma"],
+            cluster_load=metadata["cluster_load"],
+            predicted_amdahl=metadata["amdahl_time"],
+            predicted_residual=metadata["pred_residual"],
+            namespace=NAMESPACE,
+            dag_id=dag_id,
+            run_id=run_id,
+            target_id=target_group_id,
+            fallback_duration=fallback_dur,
+            is_group=is_group
         )
 
     @task
@@ -86,6 +87,7 @@ with DAG(
     @task
     def get_m_args(data: dict):
         return data["merger"]
+
 
     @task
     def extract_pod_args(data: dict):
@@ -98,56 +100,48 @@ with DAG(
     # preparation tasks
     @task()
     def prepare_individual_tasks():
-        # import os
-        # # 1. SET ENV VARS BEFORE ANY LIBRARY IMPORTS
-        # os.environ["ARBO_DB_HOST"] = "arbo-db-service"
-        # os.environ["ARBO_DB_PORT"] = "5432"
-        # os.environ["ARBO_DB_NAME"] = "arbo_data"
-        #
-        # # 2. NOW IMPORT THE CONFIG AND OVERRIDE MANUALLY
-        # from arbo_lib.db.store import Config
-        # Config.DB_HOST = "arbo-db-service"
-        # Config.DB_PORT = 5432 # Integer, not string
-        # Config.DB_NAME = "arbo_data"
         optimizer = ArboOptimizer()
-        logger.info("Fetching cluster load for optimization")
-        cluster_load = optimizer.get_cluster_load(namespace="kogler-dev")
 
-        logger.info(f"K8s Internal Call: Targetting {MINIO_ENDPOINT}")
+        # TODO: figure out way to get cluster load (will use virtual memory for now)
+        cluster_load = optimizer.get_virtual_memory()
+
+        logger.info(f"Local Simulation: Cluster Load set to {cluster_load}")
 
         input_quantity = optimizer.get_filesize(
-            endpoint_url=f"http://{MINIO_ENDPOINT}",
+            endpoint_url="http://localhost:9000",
             access_key=MINIO_ACCESS_KEY,
             secret_key=MINIO_SECRET_KEY,
             bucket_name=MINIO_BUCKET,
             file_key=f"input/{KEY_INPUT_INDIVIDUAL}"
         )
-        
 
         if not input_quantity:
-            logger.warning("Could not reach MinIO or file not found. Falling back to TOTAL_ITEMS.")
+            logger.info("Falling back to default (= TOTAL_ITEMS)")
             input_quantity = TOTAL_ITEMS
 
         configs = optimizer.get_task_configs("genome_individual", input_quantity=input_quantity,
                                              cluster_load=cluster_load)
-        
-        if not configs:
-            raise ValueError("Optimizer failed to generate configurations. Check your DB/Core logic.")
-
         s_opt = len(configs)
+
         calculated_gamma = configs[0]["gamma"]
         predicted_amdahl = configs[0]["amdahl_time"]
         predicted_residual = configs[0]["residual_prediction"]
 
+        # TODO: change later
         start_time = time.time()
+
         chunk_size = TOTAL_ITEMS // s_opt
 
+        # generate arguments for each pod
         pod_argument_list = []
         merge_keys = []
 
         for i in range(s_opt):
             counter = i * chunk_size + 1
-            stop = TOTAL_ITEMS + 1 if i == s_opt - 1 else (i + 1) * chunk_size + 1
+            if i == s_opt - 1:
+                stop = TOTAL_ITEMS + 1
+            else:
+                stop = (i + 1) * chunk_size + 1
 
             args = [
                 "--key_input", KEY_INPUT_INDIVIDUAL,
@@ -157,7 +151,12 @@ with DAG(
                 "--bucket_name", MINIO_BUCKET
             ]
             pod_argument_list.append(args)
-            merge_keys.append(f'chr22n-{counter}-{stop}.tar.gz')
+
+            # prepare filename key for downstream tasks
+            file_key = f'chr22n-{counter}-{stop}.tar.gz'
+            merge_keys.append(file_key)
+
+        logger.info(f"PLAN: s={s_opt}, chunk_size={chunk_size}")
 
         return {
             "pod_arguments": pod_argument_list,
@@ -173,10 +172,12 @@ with DAG(
     @task
     def prepare_frequency_tasks(pop: str):
         optimizer = ArboOptimizer()
-        cluster_load = optimizer.get_cluster_load(namespace="kogler-dev")
+
+        # TODO: change later
+        cluster_load = optimizer.get_virtual_memory()
 
         pop_input_size = optimizer.get_filesize(
-            endpoint_url=f"http://{MINIO_ENDPOINT}",
+            endpoint_url="http://localhost:9000",
             access_key=MINIO_ACCESS_KEY,
             secret_key=MINIO_SECRET_KEY,
             bucket_name=MINIO_BUCKET,
@@ -184,18 +185,21 @@ with DAG(
         )
 
         if not pop_input_size:
-            pop_input_size = TOTAL_ITEMS
+            logger.info(f"Falling back to default for population {pop}")
+            pop_input_size = TOTAL_ITEMS  # TODO: change this will break if once successful and once not
 
         configs = optimizer.get_task_configs(f"genome_frequency_{pop}", input_quantity=pop_input_size,
                                              cluster_load=cluster_load)
-        
-        if not configs:
-            raise ValueError(f"No configs generated for population {pop}")
-
         s_opt = len(configs)
+
         calculated_gamma = configs[0]["gamma"]
         predicted_amdahl = configs[0]["amdahl_time"]
         predicted_residual = configs[0]["residual_prediction"]
+
+        chunk_size = FREQ_TOTAL_PLOTS // s_opt
+
+        logger.info(
+            f"Population {pop}: Size={pop_input_size}, Optimal num Workers={s_opt}, Gamma={calculated_gamma}, Chunk Size={chunk_size}")
 
         worker_args = []
         chunk_size = FREQ_TOTAL_PLOTS // s_opt
@@ -222,6 +226,8 @@ with DAG(
             "--chunks", str(s_opt)
         ]]
 
+        logger.info(f"Plan for {pop}: s={s_opt}, Size={pop_input_size}")
+
         return {
             "workers": worker_args,
             "merger": merger_args,
@@ -234,21 +240,28 @@ with DAG(
             "pred_residual": predicted_residual,
         }
 
+
     @task
     def mutations_overlap_data(pops: list):
-        return [["--chromNr", CHROM_NR, "--POP", pop, "--bucket_name", MINIO_BUCKET] for pop in pops]
+        data = []
+        for pop in pops:
+            data.append([
+                "--chromNr", CHROM_NR,
+                "--POP", pop,
+                "--bucket_name", MINIO_BUCKET,
+            ])
+        return data
+
 
     # =================================
     # TASK GROUP DEFINITIONS
     # =================================
     @task_group(group_id="individual_tasks")
-    def run_individual_tasks():        
-        logger.info("Running individual tasks group")
+    def run_individual_tasks():
         ind_plan = prepare_individual_tasks()
 
         workers = KubernetesPodOperator.partial(
             task_id="workers",
-            kubernetes_conn_id=K8S_CONN_ID,
             name="individual-worker",
             namespace=NAMESPACE,
             image="kogsi/genome_dag:individual",
@@ -262,7 +275,6 @@ with DAG(
 
         individual_merge = KubernetesPodOperator(
             task_id="merge",
-            kubernetes_conn_id=K8S_CONN_ID,
             name="individuals_merge",
             namespace=NAMESPACE,
             image="kogsi/genome_dag:individuals-merge",
@@ -277,15 +289,18 @@ with DAG(
             node_selector={"kubernetes.io/hostname": "node1"},
         )
 
-        feedback = report_feedback(ind_plan, "genome_individual")
+        feedback = report_feedback(ind_plan, "genome_individual", "individual_tasks.workers", True)
+
+        # HINT: currently merge and feedback run in parallel, meaning only individual time is accounted for
+        # workers >> merge >> feedback
         [individual_merge, feedback] << workers
 
+    # helper to run frequency tasks
     def run_frequency_tasks(pop: str):
         plan_data = prepare_frequency_tasks(pop)
 
         workers = KubernetesPodOperator.partial(
             task_id="workers",
-            kubernetes_conn_id=K8S_CONN_ID,
             name=f"freq-workers-{pop.lower()}",
             namespace=NAMESPACE,
             image="kogsi/genome_dag:frequency_par2",
@@ -299,7 +314,6 @@ with DAG(
 
         merger = KubernetesPodOperator.partial(
             task_id="merge",
-            kubernetes_conn_id=K8S_CONN_ID,
             name=f"freq-merge-{pop.lower()}",
             namespace=NAMESPACE,
             image="kogsi/genome_dag:frequency_par2",
@@ -311,17 +325,18 @@ with DAG(
             arguments=get_m_args(plan_data)
         )
 
-        feedback = report_feedback(plan_data, f"genome_frequency_{pop}")
+        feedback = report_feedback(plan_data, f"genome_frequency_{pop}", f"freq_{pop}", True)
         workers >> merger >> feedback
+
 
     # =================================
     # WIRING OF DAG
     # =================================
     individual_group = run_individual_tasks()
 
+    # Sifting task
     sifting_task = KubernetesPodOperator(
         task_id="sifting",
-        kubernetes_conn_id=K8S_CONN_ID,
         name="sifting",
         namespace=NAMESPACE,
         image="kogsi/genome_dag:sifting",
@@ -342,7 +357,6 @@ with DAG(
     # mutations_data = mutations_overlap_data(populations)
     # mutations_tasks = KubernetesPodOperator.partial(
     #     task_id="mutations_overlap",
-    #     kubernetes_conn_id=K8S_CONN_ID,
     #     name="mutations-overlap",
     #     namespace=NAMESPACE,
     #     image="kogsi/genome_dag:mutations-overlap",
@@ -351,16 +365,19 @@ with DAG(
     #     get_logs=True,
     #     is_delete_operator_pod=True,
     #     image_pull_policy="IfNotPresent",
-    #     node_selector = {"kubernetes.io/hostname": "node1"},
+    #     node_selector={"kubernetes.io/hostname": "node1"},
     # ).expand(
     #     arguments=mutations_data
     # )
-
+    #
     # individual_group >> mutations_tasks
     # sifting_task >> mutations_tasks
 
     for pop in populations:
         with TaskGroup(group_id=f"freq_{pop}") as frequency_group:
             run_frequency_tasks(pop)
+
         individual_group >> frequency_group
         sifting_task >> frequency_group
+
+

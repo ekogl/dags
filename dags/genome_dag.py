@@ -103,7 +103,7 @@ with DAG(
         optimizer = ArboOptimizer()
 
         # TODO: figure out way to get cluster load (will use virtual memory for now)
-        cluster_load = optimizer.get_cluster_load()
+        cluster_load = optimizer.get_cluster_load(namespace="kogler-dev")
 
         logger.info(f"Local Simulation: Cluster Load set to {cluster_load}")
 
@@ -174,7 +174,7 @@ with DAG(
         optimizer = ArboOptimizer()
 
         # TODO: change later
-        cluster_load = optimizer.get_cluster_load()
+        cluster_load = optimizer.get_cluster_load(namespace="kogler-dev")
 
         pop_input_size = optimizer.get_filesize(
             endpoint_url=f"http://{MINIO_ENDPOINT}",

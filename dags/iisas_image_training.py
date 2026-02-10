@@ -51,7 +51,7 @@ with DAG(
         optimizer = ArboOptimizer()
 
         # TODO: change later
-        cluster_load = optimizer.get_cluster_load()
+        cluster_load = optimizer.get_cluster_load(namespace="kogler-dev")
 
         input_quantity = optimizer.get_directory_size(
             endpoint_url=f"http://{MINIO_ENDPOINT}",

@@ -54,7 +54,7 @@ with DAG(
         cluster_load = optimizer.get_cluster_load()
 
         input_quantity = optimizer.get_directory_size(
-            endpoint_url=MINIO_ENDPOINT,
+            endpoint_url=f"http://{MINIO_ENDPOINT}",
             access_key=MINIO_ACCESS_KEY,
             secret_key=MINIO_SECRET_KEY,
             bucket_name=MINIO_BUCKET,

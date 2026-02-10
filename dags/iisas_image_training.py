@@ -51,10 +51,10 @@ with DAG(
         optimizer = ArboOptimizer()
 
         # TODO: change later
-        cluster_load = optimizer.get_virtual_memory()
+        cluster_load = optimizer.get_cluster_load()
 
         input_quantity = optimizer.get_directory_size(
-            endpoint_url="http://localhost:9000",
+            endpoint_url=MINIO_ENDPOINT,
             access_key=MINIO_ACCESS_KEY,
             secret_key=MINIO_SECRET_KEY,
             bucket_name=MINIO_BUCKET,

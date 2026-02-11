@@ -52,6 +52,8 @@ with DAG(
 
         # TODO: change later
         cluster_load = optimizer.get_cluster_load(NAMESPACE)
+        
+        logger.info(f"Cluster Load set to {cluster_load}")
 
         input_quantity = optimizer.get_directory_size(
             endpoint_url=f"http://{MINIO_ENDPOINT}",

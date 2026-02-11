@@ -22,6 +22,7 @@ default_args = {
 }
 
 TOTAL_ITEMS = 15000
+FREQ_TOTAL_PLOTS = 1000
 
 MINIO_ENDPOINT = "minio.stefan-dev.svc.cluster.local:9000"
 MINIO_ACCESS_KEY = "minioadmin"
@@ -103,7 +104,7 @@ with DAG(
         # TODO: figure out way to get cluster load (will use virtual memory for now)
         cluster_load = optimizer.get_cluster_load(NAMESPACE)
 
-        logger.info(f"Local Simulation: Cluster Load set to {cluster_load}")
+        logger.info(f"Cluster Load set to {cluster_load}")
 
         input_quantity = optimizer.get_filesize(
             endpoint_url=f"http://{MINIO_ENDPOINT}",
@@ -172,6 +173,8 @@ with DAG(
         optimizer = ArboOptimizer(namespace=NAMESPACE, is_local=False)
 
         cluster_load = optimizer.get_cluster_load(NAMESPACE)
+        
+        logger.info(f"Cluster Load set to {cluster_load}")
 
         pop_input_size = optimizer.get_filesize(
             endpoint_url=f"http://{MINIO_ENDPOINT}",

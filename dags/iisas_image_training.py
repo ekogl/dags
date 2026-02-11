@@ -48,10 +48,10 @@ with DAG(
     # setup task
     @task
     def prepare_pipeline_configs():
-        optimizer = ArboOptimizer()
+        optimizer = ArboOptimizer(namespace=NAMESPACE, is_local=False)
 
         # TODO: change later
-        cluster_load = optimizer.get_cluster_load(namespace="kogler-dev")
+        cluster_load = optimizer.get_cluster_load(NAMESPACE)
 
         input_quantity = optimizer.get_directory_size(
             endpoint_url=f"http://{MINIO_ENDPOINT}",
@@ -72,9 +72,6 @@ with DAG(
         calculated_gamma = configs[0]["gamma"]
         predicted_amdahl = configs[0]["amdahl_time"]
         predicted_residual = configs[0]["residual_prediction"]
-
-        # TODO: change later
-        start_time = time.time()
 
         logger.info(f"Configuration received: s={s_opt}, gamma={calculated_gamma}")
 
@@ -135,7 +132,7 @@ with DAG(
         return {
             "configurations": configurations,
             "metadata": {
-                "start_time": start_time,
+                "start_time": time.time(),
                 "s": s_opt,
                 "gamma": calculated_gamma,
                 "cluster_load": cluster_load,
@@ -173,7 +170,7 @@ with DAG(
             name="offset-task",
             namespace=NAMESPACE,
             image="kogsi/image_classification:offset",
-            arguments=offset_args_list,  # Inject dynamic args
+            arguments=offset_args_list, 
             env_vars=minio_env_dict,
             get_logs=True,
             is_delete_operator_pod=True,
@@ -288,10 +285,9 @@ with DAG(
         node_selector={"kubernetes.io/hostname": "node1"},
     )
 
-
     @task(trigger_rule=TriggerRule.ALL_SUCCESS)
     def report_feedback(metadata: dict, **context):
-        optimizer = ArboOptimizer()
+        optimizer = ArboOptimizer(namespace=NAMESPACE, is_local=True)
 
         dag_id = context["dag"].dag_id
         run_id = context["run_id"]
@@ -306,12 +302,11 @@ with DAG(
             cluster_load=metadata["cluster_load"],
             predicted_amdahl=metadata["amdahl_time"],
             predicted_residual=metadata["pred_residual"],
-            namespace=NAMESPACE,
             dag_id=dag_id,
             run_id=run_id,
-            target_id="preprocessing_pipeline",  # The TaskGroup ID
+            target_id="preprocessing_pipeline",
             fallback_duration=fallback_dur,
-            is_group=True  # Group calculation for parallel steps
+            is_group=True
         )
 
     pipeline_configs = prepare_pipeline_configs()

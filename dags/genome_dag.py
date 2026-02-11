@@ -21,9 +21,6 @@ default_args = {
     "retry_delay": timedelta(minutes=5),
 }
 
-TOTAL_ITEMS = 15000
-FREQ_TOTAL_PLOTS = 1000
-
 MINIO_ENDPOINT = "minio.stefan-dev.svc.cluster.local:9000"
 MINIO_ACCESS_KEY = "minioadmin"
 MINIO_SECRET_KEY = "minioadmin"
@@ -58,7 +55,7 @@ with DAG(
     # =================================
     @task(trigger_rule=TriggerRule.ALL_SUCCESS)
     def report_feedback(metadata: dict, task_name: str, target_group_id: str, is_group: bool,  **context):
-        optimizer = ArboOptimizer()
+        optimizer = ArboOptimizer(namespace=NAMESPACE, is_local=False)
         dag_id = context["dag"].dag_id
         run_id = context["run_id"]
 
@@ -72,7 +69,6 @@ with DAG(
             cluster_load=metadata["cluster_load"],
             predicted_amdahl=metadata["amdahl_time"],
             predicted_residual=metadata["pred_residual"],
-            namespace=NAMESPACE,
             dag_id=dag_id,
             run_id=run_id,
             target_id=target_group_id,
@@ -100,10 +96,10 @@ with DAG(
     # preparation tasks
     @task()
     def prepare_individual_tasks():
-        optimizer = ArboOptimizer()
+        optimizer = ArboOptimizer(namespace=NAMESPACE, is_local=False)
 
         # TODO: figure out way to get cluster load (will use virtual memory for now)
-        cluster_load = optimizer.get_cluster_load(namespace="kogler-dev")
+        cluster_load = optimizer.get_cluster_load(NAMESPACE)
 
         logger.info(f"Local Simulation: Cluster Load set to {cluster_load}")
 
@@ -171,10 +167,9 @@ with DAG(
 
     @task
     def prepare_frequency_tasks(pop: str):
-        optimizer = ArboOptimizer()
+        optimizer = ArboOptimizer(namespace=NAMESPACE, is_local=False)
 
-        # TODO: change later
-        cluster_load = optimizer.get_cluster_load(namespace="kogler-dev")
+        cluster_load = optimizer.get_cluster_load(NAMESPACE)
 
         pop_input_size = optimizer.get_filesize(
             endpoint_url=f"http://{MINIO_ENDPOINT}",
@@ -369,7 +364,7 @@ with DAG(
     # ).expand(
     #     arguments=mutations_data
     # )
-    #
+
     # individual_group >> mutations_tasks
     # sifting_task >> mutations_tasks
 
@@ -379,5 +374,4 @@ with DAG(
 
         individual_group >> frequency_group
         sifting_task >> frequency_group
-
 

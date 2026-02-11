@@ -289,7 +289,7 @@ with DAG(
 
     @task(trigger_rule=TriggerRule.ALL_SUCCESS)
     def report_feedback(metadata: dict, **context):
-        optimizer = ArboOptimizer(namespace=NAMESPACE, is_local=True)
+        optimizer = ArboOptimizer(namespace=NAMESPACE, is_local=False)
 
         dag_id = context["dag"].dag_id
         run_id = context["run_id"]

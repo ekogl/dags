@@ -269,6 +269,7 @@ with DAG(
             env_vars=minio_env_vars,
             is_delete_operator_pod=True,
             node_selector={"kubernetes.io/hostname": "node1"},
+            image_pull_policy="Always",
         ).expand(
             arguments=extract_pod_args(ind_plan)
         )
@@ -308,6 +309,7 @@ with DAG(
             env_vars=minio_env_vars,
             is_delete_operator_pod=True,
             node_selector={"kubernetes.io/hostname": "node1"},
+            image_pull_policy="Always",
         ).expand(
             arguments=get_w_args(plan_data)
         )
@@ -321,6 +323,7 @@ with DAG(
             env_vars=minio_env_vars,
             is_delete_operator_pod=True,
             node_selector={"kubernetes.io/hostname": "node1"},
+            image_pull_policy="Always",
         ).expand(
             arguments=get_m_args(plan_data)
         )
